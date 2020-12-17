@@ -1,0 +1,523 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "Builds a VPC with Internet Gateway, 2 public and 2 private subnets and NAT Gateway.",
+  "Parameters" : {
+	"VpcCidr": {
+      "Description": "Enter the whole VPC CIDR Block.",
+	  "Default" : "10.0.0.0/16",
+      "Type": "String",
+      "ConstraintDescription": "Supports subnet sizes of /16 to /22 only. Input must be a correct CIDR, such as: 10.0.0.0/16",
+      "AllowedPattern": "^((\\d)+.){3}(0)\\/(16|17|18|19|20|21|22)"
+    },
+	
+    "PublicSubnetCIDR": { 
+	  "Description": "Public Subnet CIDR.", 
+	  "Default" : "10.0.1.0/24",
+	  "Type": "String", 
+	  "AllowedPattern": "^(((\\d)+.){3}(0)\\/(18|19|20|21|22|23|24|25)|)"
+	},
+	
+	"PublicSubnetCIDR2": { 
+	"Description": "2nd Public Subnet CIDR.", 
+	"Default" : "10.0.2.0/24",
+	"Type": "String", 
+	"AllowedPattern": "^(((\\d)+.){3}(0)\\/(18|19|20|21|22|23|24|25)|)"
+	},
+	
+	"PrivateSubnetCIDR": { 
+	  "Description": "Private Subnet CIDR.", 
+	  "Default" : "10.0.3.0/24",
+	  "Type": "String", 
+	  "AllowedPattern": "^(((\\d)+.){3}(0)\\/(18|19|20|21|22|23|24|25)|)" 
+	},
+	
+	"PrivateSubnetCIDR2": { 
+	  "Description": "Private Subnet CIDR.", 
+	  "Default" : "10.0.4.0/24",
+	  "Type": "String", 
+	  "AllowedPattern": "^(((\\d)+.){3}(0)\\/(18|19|20|21|22|23|24|25)|)" 
+	},
+	
+	"InstanceTypeParameter" : {
+		"Type" : "String",
+		"Default" : "t2.micro",
+		"AllowedValues" : ["t2.micro", "m1.small", "m1.large"],
+		"Description" : "Enter t2.micro, m1.small, or m1.large. Default is t2.micro."
+	},
+	
+	"AvailabilityZone1" :{
+		"Type" : "String",
+		"Default" : "ap-northeast-2a",
+		"AllowedValues" : ["ap-northeast-2a", "ap-northeast-2b", "ap-northeast-2c", "ap-northeast-2d"],
+		"Description" : "Choose AvailabilityZone - PublicSubnet1"
+	},
+	
+	"AvailabilityZone2" :{
+		"Type" : "String",
+		"Default" : "ap-northeast-2c",
+		"AllowedValues" : ["ap-northeast-2a", "ap-northeast-2b", "ap-northeast-2c", "ap-northeast-2d"],
+		"Description" : "Choose AvailabilityZone - PublicSubnet2"
+	},
+	
+	"AvailabilityZone3" :{
+		"Type" : "String",
+		"Default" : "ap-northeast-2a",
+		"AllowedValues" : ["ap-northeast-2a", "ap-northeast-2b", "ap-northeast-2c", "ap-northeast-2d"],
+		"Description" : "Choose AvailabilityZone - PrivateSubnet1"
+	},
+	
+	"AvailabilityZone4" :{
+		"Type" : "String",
+		"Default" : "ap-northeast-2c",
+		"AllowedValues" : ["ap-northeast-2a", "ap-northeast-2b", "ap-northeast-2c", "ap-northeast-2d"],
+		"Description" : "Choose AvailabilityZone - PrivateSubnet2"
+	},
+	"KeyName": {
+		"Description": "EC2 Instance SSH Key",
+		"Type": "AWS::EC2::KeyPair::KeyName"
+	},
+	"InstanceTypeParameter": {
+		"Type": "String",
+		"Default": "t2.micro",
+		"AllowedValues": [
+			"t2.micro",
+			"m1.small",
+			"m1.large"
+		],
+		"Description": "Enter t2.micro, m1.small, or m1.large. Default is t2.micro."
+	}
+	},
+	"Mappings": {
+		"AMIs": {
+			"ap-northeast-2": {
+				"Name": "ami-03461b78fdba0ff9d"
+			}
+		}
+	},
+  "Conditions": {
+    "CreateSubnetA": { "Fn::And": [
+      { "Fn::Not" : [ { "Fn::Equals" : [ {"Ref" : "PublicSubnetCIDR"}, "" ] } ] },
+      { "Fn::Not" : [ { "Fn::Equals" : [ {"Ref" : "PrivateSubnetCIDR"}, "" ] } ] },
+	  { "Fn::Not" : [ { "Fn::Equals" : [ {"Ref" : "PublicSubnetCIDR2"}, "" ] } ] },
+	  { "Fn::Not" : [ { "Fn::Equals" : [ {"Ref" : "PrivateSubnetCIDR2"}, "" ] } ] }
+    ]}
+  },
+
+  "Resources" : {
+    "VPC" : {
+      "Type" : "AWS::EC2::VPC",
+      "Properties" : {
+        "CidrBlock" : { "Ref" : "VpcCidr" },
+        "Tags" : [
+          {"Key" : "Name", "Value" : {"Fn::Join":["",[{ "Ref" : "AWS::StackName"},"-VPC"]]}},  
+          {"Key" : "Network", "Value" : "Public" },
+		  {"Key" : "Environment", "Value" : "Dev" }
+        ]
+      }
+    },
+
+    "PublicSubnet" : {
+      "Type" : "AWS::EC2::Subnet",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "CidrBlock" : { "Ref" : "PublicSubnetCIDR" },
+        "AvailabilityZone" : { "Ref" : "AvailabilityZone1"},
+        "Tags" : [
+          {"Key" : "Name", "Value" : {"Fn::Join":["",[{ "Ref" : "AWS::StackName"},"-PublicSubnet1"]]}},
+          {"Key" : "Network", "Value" : "Public" },
+		  {"Key" : "Environment", "Value" : "Dev" }
+        ]
+      }
+    },
+	
+	"PublicSubnet2" : {
+      "Type" : "AWS::EC2::Subnet",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "CidrBlock" : { "Ref" : "PublicSubnetCIDR2" },
+        "AvailabilityZone" : { "Ref" : "AvailabilityZone2"},
+        "Tags" : [
+          {"Key" : "Name", "Value" : {"Fn::Join":["",[{ "Ref" : "AWS::StackName"},"-PublicSubnet2"]]}},
+          {"Key" : "Network", "Value" : "Public" },
+		  {"Key" : "Environment", "Value" : "Dev" }
+        ]
+      }
+    },
+
+    "PrivateSubnet" : {
+      "Type" : "AWS::EC2::Subnet",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "CidrBlock" : { "Ref" : "PrivateSubnetCIDR" },
+        "AvailabilityZone" : { "Ref" : "AvailabilityZone3"},
+        "Tags" : [
+          {"Key" : "Name", "Value" : {"Fn::Join":["",[{ "Ref" : "AWS::StackName"},"-PrivateSubnet1"]]}},
+          {"Key" : "Network", "Value" : "Public" },
+		  {"Key" : "Environment", "Value" : "Dev" }
+        ]
+      }
+    },
+	
+	"PrivateSubnet2" : {
+      "Type" : "AWS::EC2::Subnet",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "CidrBlock" : { "Ref" : "PrivateSubnetCIDR2" },
+        "AvailabilityZone" : { "Ref" : "AvailabilityZone4"},
+        "Tags" : [
+          {"Key" : "Name", "Value" : {"Fn::Join":["",[{ "Ref" : "AWS::StackName"},"-PrivateSubnet2"]]}},
+          {"Key" : "Network", "Value" : "Public" },
+		  {"Key" : "Environment", "Value" : "Dev" }
+        ]
+      }
+    },
+
+    "InternetGateway" : {
+      "Type" : "AWS::EC2::InternetGateway",
+      "Properties" : {
+        "Tags" : [
+          {"Key" : "Name", "Value" : {"Fn::Join":["",[{ "Ref" : "AWS::StackName"},"-IGW"]]}},
+          {"Key" : "Network", "Value" : "Public" }
+        ]
+      }
+    },
+
+    "VPCGatewayAttach" : {
+	  "DependsOn" : ["VPC", "InternetGateway"],
+      "Type" : "AWS::EC2::VPCGatewayAttachment",
+      "Properties" : {
+         "VpcId" : { "Ref" : "VPC" },
+         "InternetGatewayId" : { "Ref" : "InternetGateway" }
+      }
+    },
+
+    "PublicRouteTable" : {
+	  "DependsOn" : ["VPC"],
+      "Type" : "AWS::EC2::RouteTable",
+      "Properties" : {
+        "VpcId" : {"Ref" : "VPC"},
+        "Tags" : [
+          {"Key" : "Name", "Value" : {"Fn::Join":["",[{ "Ref" : "AWS::StackName"},"-PublicRouteTable"]]}},
+          {"Key" : "Network", "Value" : "Public" }
+        ]
+      }
+    },
+	
+    "PublicRoute" : {
+	  "DependsOn" : ["PublicRouteTable", "InternetGateway"],
+      "Type" : "AWS::EC2::Route",
+      "Properties" : {
+        "RouteTableId" : { "Ref" : "PublicRouteTable" },
+        "DestinationCidrBlock" : "0.0.0.0/0",
+        "GatewayId" : { "Ref" : "InternetGateway" }
+      }
+    },
+
+    "PublicSubnetRouteTableAssociation" : {
+	  "DependsOn" : ["PublicSubnet", "PublicRouteTable"],
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "PublicSubnet" },
+        "RouteTableId" : { "Ref" : "PublicRouteTable" }
+      }
+    },
+	
+	"PublicSubnetRouteTableAssociation2" : {
+	  "DependsOn" : ["PublicSubnet2", "PublicRouteTable"],
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "PublicSubnet2" },
+        "RouteTableId" : { "Ref" : "PublicRouteTable" }
+      }
+    },
+
+    "PrivateRouteTable" : {
+      "DependsOn" : ["VPC"],
+      "Type" : "AWS::EC2::RouteTable",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "Tags" : [
+          { "Key" : "Name", "Value" : {"Fn::Join":["",[{ "Ref" : "AWS::StackName"},"-PrivateRouteTable"]]}},
+          { "Key" : "Network", "Value" : "Private" }
+        ]
+      }
+    },
+	
+	"NATGateway" : {
+	  "Type" : "AWS::EC2::NatGateway",
+	  "DependsOn": "VPCGatewayAttach",
+      "Properties" : {
+        "AllocationId" : { "Fn::GetAtt" : ["NATGatewayEIP", "AllocationId"]},
+        "SubnetId" : { "Ref" : "PublicSubnet"}
+      }
+    },
+	
+    "NATGatewayEIP" : {
+	  "Type" : "AWS::EC2::EIP",
+      "Properties" : {
+        "Domain" : "vpc"
+	  }
+    },	
+	
+	"NATRoute" : {
+      "Type" : "AWS::EC2::Route",
+      "Properties" : {
+        "RouteTableId" : { "Ref" : "PrivateRouteTable" },
+        "DestinationCidrBlock" : "0.0.0.0/0",
+        "NatGatewayId" : { "Ref" : "NATGateway" }
+      }
+	},
+	
+	"PrivateSubnetRouteTableAssociation" : {
+      "DependsOn" : ["PrivateSubnet", "PrivateRouteTable"],
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "PrivateSubnet" },
+        "RouteTableId" : { "Ref" : "PrivateRouteTable" }
+      }
+    },
+	
+	"PrivateSubnetRouteTableAssociation2" : {
+      "DependsOn" : ["PrivateSubnet2", "PrivateRouteTable"],
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "PrivateSubnet2" },
+        "RouteTableId" : { "Ref" : "PrivateRouteTable" }
+      }
+    },
+	
+		"SSMallowRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "SSMallowRole",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+                ]
+            }
+            
+        },
+		
+		"SSMallowProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Roles": [
+                    {
+                        "Ref": "SSMallowRole"
+                    }
+                ]
+            }
+        },
+		
+		"SSMaccessRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+            "RoleName": "SSMaccessRole",
+            "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyDocument": 
+                  {
+                     "Version": "2012-10-17",
+                     "Statement": [
+                        {
+                           "Effect": "Allow",
+                           "Action": [
+                              "ssm:StartSession"
+                           ],
+                           "Resource": "*"
+                        },
+                        {
+                           "Effect": "Allow",
+                           "Action": [
+                              "ssm:TerminateSession"
+                           ],
+                           "Resource": "arn:aws:ssm:*:*:session/${aws:username}-*"
+                        }
+                     ]
+                  }
+                  ,
+                  "PolicyName":"ssmtest"
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "5a1f53c6-8382-42e7-ba1a-2afbf84542d1"
+                }
+            }
+        },
+		
+		"SSMaccessProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Roles": [
+                    {
+                        "Ref": "SSMaccessRole"
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "c0c44464-2565-4300-b307-894ad1992c84"
+                }
+            }
+        },
+		"SSHAccessSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Allow SSH access from anywhere",
+                "SecurityGroupIngress": [
+                    {
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "IpProtocol": "tcp",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "SSHAccessSG"
+                    }
+                ]
+            }
+        },
+		"SSMpublicEC2": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+				"AvailabilityZone":"ap-northeast-2a",
+				"KeyName" : { "Ref" : "KeyName" },
+                "ImageId": "ami-03461b78fdba0ff9d",
+                "IamInstanceProfile": {"Ref": "SSMaccessProfile"},
+                "InstanceType": {"Ref": "InstanceTypeParameter"},
+                "NetworkInterfaces": [{
+                    "SubnetId": {
+                        "Ref": "PublicSubnet"
+                    },
+                    "DeviceIndex": "0",
+					"AssociatePublicIpAddress": "true"
+                }],
+				"Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "SSMPublic"
+                    }
+                ]
+            },
+			
+            "DependsOn": [
+                "SSMaccessRole","SSHAccessSG"
+            ]
+        },
+		
+		"SSMprivateEC2": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+				"AvailabilityZone":"ap-northeast-2a",
+				"KeyName" : { "Ref" : "KeyName" },
+                "ImageId": "ami-03461b78fdba0ff9d",
+                "IamInstanceProfile": {
+                    "Ref": "SSMallowProfile"
+                },
+                "InstanceType": "t2.micro",
+                "NetworkInterfaces": [
+                    {
+                        "SubnetId": {
+                            "Ref": "PrivateSubnet"
+                        },
+                        "DeviceIndex": "0",
+                        "AssociatePublicIpAddress": "false"
+                    }
+                ],
+				"Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "SSMPrivate"
+                    }
+                ]
+            }
+        }
+  },
+  
+  
+  
+  "Outputs" : {
+    "VpcId" : {
+      "Value" : {"Ref" : "VPC"},
+      "Description" : "VPC ID of newly created VPC"
+    },
+
+    "PublicSubnet" : {
+      "Value" : {"Ref" : "PublicSubnet"},
+      "Description" : "Public Subnet is created"
+    },
+	
+	"PublicSubnet2" : {
+      "Value" : {"Ref" : "PublicSubnet2"},
+      "Description" : "2nd Public Subnet in AZ B"
+    },
+
+    "PrivateSubnet" : {
+      "Value" : {"Ref" : "PrivateSubnet"},
+      "Description" : "Private Subnet in AZ B"
+    },
+	
+	"PrivateSubnet2" : {
+      "Value" : {"Ref" : "PrivateSubnet"},
+      "Description" : "Private Subnet in AZ B"
+    },
+	
+	"InternetGateway" : {
+      "Value" : {"Ref" : "InternetGateway"},
+      "Description" : "Internet Gateway attached to the VPC"
+    },
+	
+	"NATGateway" : {
+      "Value" : {"Ref" : "NATGateway"},
+      "Description" : "NAT Gateway for Private Subnet"
+    },
+	
+	"ElasticIP" : {
+      "Value" : {"Ref" : "NATGatewayEIP"},
+      "Description" : "Elastic IP attached to the NAT"
+    },
+	
+	"EC2" : {
+		"Value" : {"Ref" : "SSMpublicEC2"},
+      "Description" : "Create EC2 Public"
+	}
+		
+  }
+
+}
