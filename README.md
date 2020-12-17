@@ -1,4 +1,4 @@
-# 파일명 : vpc-ssm
+# 파일명 : vpc-ssm.json
 작업 진행 순서
 - vpc X 1
 - public subnet X 2
