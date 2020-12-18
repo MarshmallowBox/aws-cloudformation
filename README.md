@@ -1,5 +1,4 @@
 # 파일명 : vpc-ssm.json
-작업 진행 순서
 - VPC X 1
 - IGW X 1
 - Nat Gateway X 1
