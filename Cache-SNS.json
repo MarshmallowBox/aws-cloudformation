@@ -1,0 +1,223 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "AWS::CloudFormation::Designer": {
+            "e4e01481-ea66-4333-a771-cc6b8a771fce": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": -350,
+                    "y": 720
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "037c704a-3feb-4b22-90da-5a7886d65263": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": -250,
+                    "y": 720
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "f9915c1e-a9be-4aea-8ed9-3484fb18144a": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": -130,
+                    "y": 620
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "b32cd6e7-4511-4d47-a870-b45ad5027363": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": -130,
+                    "y": 720
+                },
+                "z": 0,
+                "embeds": [],
+                "isassociatedwith": [
+                    "037c704a-3feb-4b22-90da-5a7886d65263"
+                ]
+            }
+        }
+    },
+    "Resources": {
+        "CacheEventRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "CacheEventRole",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "CloudwatchLogs",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:*"
+                                    ],
+                                    "Resource": [
+                                        "arn:aws:logs:*:*:*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/CloudWatchFullAccess"
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "e4e01481-ea66-4333-a771-cc6b8a771fce"
+                }
+            }
+        },
+        "Function": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Redis Event Notification",
+                "Environment": {
+                    "Variables": {
+                        "slackURL": "https://hooks.slack.com/services/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"
+                    }
+                },
+                "Role": {
+                    "Fn::GetAtt": [
+                        "CacheEventRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 300,
+                "Runtime": "python3.8",
+                "Handler": "index.lambda_handler",
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "#ElastiCache_Event_Monitoring",
+                                "#-*- coding: utf8 -*-",
+                                "import sys, json, collections, os",
+                                "import urllib3",
+                                "from datetime import datetime, timedelta",
+                                "\n",
+                                "#ElastiCache Event ??",
+                                "def lambda_handler(event, context):",
+                                "  request = urllib3.PoolManager().request",
+                                "  Lambda_Arn=context.invoked_function_arn",
+                                "  cut_arn=Lambda_Arn.split(':')",
+                                "  accountId=cut_arn[4]",
+                                "  response = request('GET', 'http://api.mcis.co.kr/api/v2/customer?suprPlanSeq=0&terrSeq=0&mcisAccSeq=61&apprStatTypes=3&useCache=true&accountId='+str(accountId))",
+                                "  comp = json.loads(response.data.decode('utf-8'))",
+                                "  customerName = comp[0]['compName']",
+                                "  original = json.dumps(event)",
+                                "  result = json.loads(original)",
+                                "  region = result['Records'][0]['EventSubscriptionArn'].split(':')",
+                                "  print(region[3])",
+                                "  timestamp = result['Records'][0]['Sns']['Timestamp']",
+                                "  time = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')",
+                                "  date = time + timedelta(hours=9)",
+                                "  timedate = date.strftime('%Y-%m-%d %H:%M')",
+                                "  data = result['Records'][0]['Sns']['Message']",
+                                "  jsondata = json.loads(data)",
+                                "  for k in jsondata.keys(): category = k.split(':')",
+                                "  for t in jsondata.values(): target = t",
+                                "  url = os.environ['slackURL']",
+                                "  message = {\"channel\": \"#redis\",\"username\": \"ElastiCache Event\",\"attachments\": [{\"mrkdwn_in\": [\"text\"],\"color\": \"#36a64f\", \"fields\": [{\"title\": \"Name\", \"value\": customerName, \"short\": \"false\"},{\"title\": \"Target (Region)\", \"value\": target+\" (\"+region[3]+\")\", \"short\": \"false\"},{\"title\": \"Status\", \"value\": \"`\"+category[1]+\"`\", \"short\": \"false\"},{\"title\": \"Date\", \"value\": str(timedate)+\" (KST)\", \"short\": \"false\"}]}]}",
+                                "  encode_message = json.dumps(message).encode('utf-8')",
+                                "  webhook = request('POST', url, body=encode_message)"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "DependsOn": [
+                "CacheEventRole"
+            ],
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "037c704a-3feb-4b22-90da-5a7886d65263"
+                }
+            }
+        },
+        "CacheEventTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "Subscription": [
+                    {
+                        "Endpoint": {
+                            "Fn::GetAtt": [
+                                "Function",
+                                "Arn"
+                            ]
+                        },
+                        "Protocol": "lambda"
+                    }
+                ]
+            },
+            "DependsOn": [
+                "Function"
+            ],
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "f9915c1e-a9be-4aea-8ed9-3484fb18144a"
+                }
+            }
+        },
+        "LambdaInvokeSNS": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "Principal": "sns.amazonaws.com",
+                "SourceArn": {
+                    "Ref": "CacheEventTopic"
+                },
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "Function",
+                        "Arn"
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "b32cd6e7-4511-4d47-a870-b45ad5027363"
+                }
+            }
+        }
+    }
+}
