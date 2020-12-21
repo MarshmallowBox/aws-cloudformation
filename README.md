@@ -10,5 +10,10 @@
     - User Data
     - Security Group
 - Private EC2 X 1
-- Role X 2
+- IAM Role X 2
 - Profile X 2
+
+# 파일명 : cache-sns.json
+- IAM Role X 1
+- Lambda X 1
+- SNS X 1
